@@ -21,3 +21,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .nvmrc
+
+# tradle.net data, downloaded by scripts/fetch-tradle-data.sh
+/public/countries/

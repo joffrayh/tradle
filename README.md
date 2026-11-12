@@ -15,8 +15,13 @@ To test and develop new features, make sure you meet the following requirements:
 
 ```
 npm ci
+npm run fetch-data   # download tradle.net's schedule + country export data
 npm start
 ```
+
+`fetch-data` puts tradle.net's per-country files in `public/countries/` (not
+committed) so the treemap values match tradle.net exactly. Without them the
+game falls back to OEC's data API, whose figures are slightly different.
 
 ## Resources used:
 

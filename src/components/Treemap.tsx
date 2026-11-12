@@ -1,3 +1,4 @@
+import { csv } from "d3-fetch";
 import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
 import React, {
   useCallback,
@@ -7,20 +8,17 @@ import React, {
   useState,
 } from "react";
 
-// Export data comes straight from OEC's public data API (CORS-enabled, no
-// cookies) and is drawn here, instead of embedding an oec.world page — the
-// embed brought OEC's cookie banner and cookies with it.
+// Values come from tradle.net's own per-country files (downloaded into
+// public/countries/ at build time by scripts/fetch-tradle-data.sh), so the
+// treemap matches tradle.net exactly. For countries tradle.net has no file
+// for, fall back to OEC's public data API (CORS-enabled, no cookies) for the
+// same year. Either way nothing is embedded from oec.world, whose embed
+// brought a cookie banner and cookies with it.
 const API =
   "https://api-v2.oec.world/tesseract/data.jsonrecords?cube=trade_i_baci_a_92&drilldowns=Year,HS4&measures=Trade+Value&parents=true";
-const YEAR = 2023; // Same year as the official Tradle treemap
+const FALLBACK_YEAR = 2021; // tradle.net's data year
 
-interface Row {
-  "Section ID": number;
-  Section: string;
-  "HS4 ID": number;
-  HS4: string;
-  "Trade Value": number;
-}
+type Row = Record<string, string | number | undefined>;
 
 interface Leaf {
   id: number;
@@ -28,6 +26,11 @@ interface Leaf {
   sectionId: number;
   section: string;
   value: number;
+}
+
+interface Dataset {
+  leaves: Leaf[];
+  year: number | null;
 }
 
 const SECTION_COLORS: Record<number, string> = {
@@ -74,32 +77,68 @@ export function formatMoney(value: number) {
   return `$${Math.round(value)}`;
 }
 
-const cache = new Map<string, Promise<Leaf[]>>();
-function fetchExports(oecId: string): Promise<Leaf[]> {
-  let request = cache.get(oecId);
+let indexPromise: Promise<Set<string>> | null = null;
+function loadLocalIndex(): Promise<Set<string>> {
+  if (indexPromise == null) {
+    indexPromise = fetch(`${process.env.PUBLIC_URL}/countries/index.json`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((codes: string[]) => new Set(codes))
+      .catch(() => new Set<string>());
+  }
+  return indexPromise;
+}
+
+/** Lowercase ISO2 codes that have a tradle.net data file (undefined while loading). */
+export function useLocalDataIndex(): Set<string> | undefined {
+  const [index, setIndex] = useState<Set<string>>();
+  useEffect(() => {
+    let cancelled = false;
+    loadLocalIndex().then((codes) => !cancelled && setIndex(codes));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return index;
+}
+
+function toDataset(rows: Row[]): Dataset {
+  const leaves = rows
+    .map((row) => ({
+      id: Number(row["HS4 ID"]),
+      name: String(row.HS4 ?? ""),
+      sectionId: Number(row["Section ID"]),
+      section: String(row.Section ?? ""),
+      value: Number(row["Trade Value"]),
+    }))
+    .filter((leaf) => leaf.value > 0 && Number.isFinite(leaf.id));
+  const year = rows.length ? Number(rows[0].Year) || null : null;
+  return { leaves, year };
+}
+
+const cache = new Map<string, Promise<Dataset>>();
+function fetchExports(code: string, oecId?: string): Promise<Dataset> {
+  let request = cache.get(code);
   if (!request) {
-    const url = `${API}&include=Year:${YEAR};Exporter+Country:${oecId}`;
-    request = fetch(url, { credentials: "omit" })
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+    request = loadLocalIndex()
+      .then((index) => {
+        if (index.has(code)) {
+          return csv(`${process.env.PUBLIC_URL}/countries/${code}.csv`);
+        }
+        if (!oecId) throw new Error(`No export data for ${code}`);
+        const url = `${API}&include=Year:${FALLBACK_YEAR};Exporter+Country:${oecId}`;
+        return fetch(url, { credentials: "omit" })
+          .then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+          })
+          .then((json: { data: Row[] }) => json.data);
       })
-      .then((json: { data: Row[] }) =>
-        json.data
-          .filter((row) => row["Trade Value"] > 0)
-          .map((row) => ({
-            id: row["HS4 ID"],
-            name: row.HS4,
-            sectionId: row["Section ID"],
-            section: row.Section,
-            value: row["Trade Value"],
-          }))
-      )
+      .then((rows) => toDataset(rows as Row[]))
       .catch((error) => {
-        cache.delete(oecId);
+        cache.delete(code);
         throw error;
       });
-    cache.set(oecId, request);
+    cache.set(code, request);
   }
   return request;
 }
@@ -121,11 +160,14 @@ function useElementSize<T extends HTMLElement>() {
 }
 
 interface TreemapProps {
-  oecId: string;
+  /** Lowercase ISO2 code, e.g. "ng" */
+  code: string;
+  oecId?: string;
 }
 
-export function Treemap({ oecId }: TreemapProps) {
+export function Treemap({ code, oecId }: TreemapProps) {
   const [leaves, setLeaves] = useState<Leaf[] | null>(null);
+  const [year, setYear] = useState<number | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
@@ -136,13 +178,17 @@ export function Treemap({ oecId }: TreemapProps) {
     setLeaves(null);
     setError(false);
     setSelected(null);
-    fetchExports(oecId)
-      .then((data) => !cancelled && setLeaves(data))
+    fetchExports(code, oecId)
+      .then((data) => {
+        if (cancelled) return;
+        setLeaves(data.leaves);
+        setYear(data.year);
+      })
       .catch(() => !cancelled && setError(true));
     return () => {
       cancelled = true;
     };
-  }, [oecId, attempt]);
+  }, [code, oecId, attempt]);
 
   const total = useMemo(
     () => (leaves ?? []).reduce((sum, leaf) => sum + leaf.value, 0),
@@ -197,7 +243,9 @@ export function Treemap({ oecId }: TreemapProps) {
   return (
     <div>
       <p className="mb-1 text-center text-slate-700 dark:text-slate-300">
-        {leaves ? `Total exports (${YEAR}): ${formatMoney(total)}` : " "}
+        {leaves
+          ? `Total exports${year ? ` (${year})` : ""}: ${formatMoney(total)}`
+          : " "}
       </p>
       <div
         ref={ref}

@@ -25,7 +25,7 @@ import { SettingsData } from "../hooks/useSettings";
 import { useMode } from "../hooks/useMode";
 import { useCountry, useCountryPool } from "../hooks/useCountry";
 import { useUnlimitedGame } from "../hooks/useUnlimitedGame";
-import { Treemap } from "./Treemap";
+import { Treemap, useLocalDataIndex } from "./Treemap";
 import { useOECSession, type OECSession } from "../hooks/useOECSession";
 // import { BotMarketLink } from "./BotMarketLink";
 import { OecLink } from "./OecLink";
@@ -178,6 +178,10 @@ export function Game({ settingsData, updateSettings }: GameProps) {
     ? countryISOMapping[country.code]?.toLowerCase()
     : "";
   const oecId = getOecCountryId(country);
+  const localDataIndex = useLocalDataIndex();
+  const dataCode = country?.code.toLowerCase() ?? "";
+  const hasData =
+    country != null && (oecId != null || !!localDataIndex?.has(dataCode));
   const oecLink = isAprilFools
     ? "https://oec.world/"
     : `https://oec.world/en/profile/country/${country3LetterCode}`;
@@ -227,9 +231,9 @@ export function Game({ settingsData, updateSettings }: GameProps) {
             frameBorder="0"
           />
         </div>
-      ) : oecId ? (
-        <Treemap oecId={oecId} />
-      ) : !isUnlimited && !daily.loading ? (
+      ) : hasData ? (
+        <Treemap code={dataCode} oecId={oecId} />
+      ) : !isUnlimited && !daily.loading && localDataIndex != null ? (
         <div className="my-4 rounded-xl border border-slate-300/80 bg-white/70 p-4 text-center dark:border-slate-700 dark:bg-slate-900/70">
           {daily.scheduled
             ? "Today's country isn't supported here, so there's no daily puzzle today."
