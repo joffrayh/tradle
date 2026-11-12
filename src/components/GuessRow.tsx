@@ -137,25 +137,19 @@ export function GuessRow({
         </>
       );
     case "ENDED": {
-      const countrySectionStyle = {
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "16px",
-      };
       return (
         <>
           <div
             className={
               guess?.distance === 0
-                ? "bg-oec-yellow text-slate-900 rounded-lg flex items-center h-8 col-span-3 animate-reveal pl-2"
-                : "bg-slate-200 text-slate-900 rounded-lg flex items-center h-8 col-span-3 animate-reveal pl-2 dark:bg-slate-800 dark:text-slate-100"
+                ? "bg-oec-yellow text-slate-900 rounded-lg flex min-w-0 items-center justify-between gap-1 h-8 col-span-3 animate-reveal px-2 md:px-4"
+                : "bg-slate-200 text-slate-900 rounded-lg flex min-w-0 items-center justify-between gap-1 h-8 col-span-3 animate-reveal px-2 md:px-4 dark:bg-slate-800 dark:text-slate-100"
             }
-            style={countrySectionStyle}
           >
-            <p className="text-ellipsis overflow-hidden whitespace-nowrap">
+            <p className="min-w-0 text-ellipsis overflow-hidden whitespace-nowrap">
               {getCountryPrettyName(guess?.name, isAprilFools)}
             </p>
-            <p>
+            <p className="shrink-0">
               {guess?.country !== undefined ? (
                 isAprilFools ? (
                   <span className="h-5 w-5">
@@ -179,6 +173,9 @@ export function GuessRow({
                     href={constructOecLink(guess?.country)}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label="Open country profile on the OEC"
+                    // Enlarge the tap area without changing the visual size
+                    className="-m-2 flex p-2"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -202,10 +199,10 @@ export function GuessRow({
           <div
             className={
               guess?.distance === 0
-                ? `bg-oec-yellow text-slate-900 rounded-lg flex items-center justify-center h-8 col-span-2 animate-reveal${
+                ? `bg-oec-yellow text-slate-900 rounded-lg flex items-center justify-center whitespace-nowrap h-8 col-span-2 animate-reveal${
                     isDistanceToggleEnabled ? " cursor-pointer" : ""
                   }`
-                : `bg-slate-200 text-slate-900 rounded-lg flex items-center justify-center h-8 col-span-2 animate-reveal dark:bg-slate-800 dark:text-slate-100${
+                : `bg-slate-200 text-slate-900 rounded-lg flex items-center justify-center whitespace-nowrap h-8 col-span-2 animate-reveal dark:bg-slate-800 dark:text-slate-100${
                     isDistanceToggleEnabled ? " cursor-pointer" : ""
                   }`
             }

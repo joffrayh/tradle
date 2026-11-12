@@ -5,6 +5,7 @@ import {
   sanitizeCountryName,
 } from "../domain/countries";
 import { Group, Text, Autocomplete } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { flag } from "country-emoji";
 import type { Guess } from "../domain/guess";
 
@@ -60,6 +61,9 @@ export function CountryInput({
   guesses,
 }: CountryInputProps) {
   const isDark = theme === "dark";
+  // On phones the input sits at the bottom of the screen (just above the
+  // on-screen keyboard), so open suggestions upwards where there is room.
+  const isMobile = useMediaQuery("(max-width: 767px)");
   const guessedNames = new Set(
     guesses.map((guess) =>
       sanitizeCountryName(guess.country?.name || guess.name)
@@ -75,6 +79,13 @@ export function CountryInput({
   return (
     <Autocomplete
       autoComplete="noautocompleteplzz"
+      autoCorrect="off"
+      autoCapitalize="words"
+      spellCheck={false}
+      enterKeyHint="go"
+      className="min-w-0 flex-1"
+      dropdownPosition={isMobile ? "top" : "bottom"}
+      switchDirectionOnFlip={isMobile}
       placeholder={placeholder}
       limit={isAprilFools ? items.length : 5}
       itemComponent={
@@ -83,13 +94,15 @@ export function CountryInput({
       styles={{
         input: {
           height: 48,
+          // >= 16px stops iOS Safari from zooming in when the input is focused
+          fontSize: 16,
           borderRadius: 12,
           border: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`,
           backgroundColor: isDark ? "rgba(15, 23, 42, 0.94)" : "#ffffff",
           color: isDark ? "#e2e8f0" : "#0f172a",
         },
         dropdown: {
-          maxHeight: isAprilFools ? 280 : undefined,
+          maxHeight: isAprilFools ? (isMobile ? 240 : 280) : undefined,
           overflowY: isAprilFools ? "auto" : undefined,
           border: `1px solid ${isDark ? "#334155" : "#cbd5e1"}`,
           backgroundColor: isDark ? "#0f172a" : "#ffffff",
@@ -101,6 +114,10 @@ export function CountryInput({
         item: {
           color: isDark ? "#e2e8f0" : "#0f172a",
           borderRadius: 10,
+          // Comfortable touch targets
+          minHeight: 44,
+          display: "flex",
+          alignItems: "center",
           backgroundColor: isDark ? "#0f172a" : "#ffffff",
         },
         hovered: {

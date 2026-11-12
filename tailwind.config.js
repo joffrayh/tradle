@@ -1,7 +1,14 @@
+const defaultTheme = require("tailwindcss/defaultTheme");
+
 module.exports = {
   darkMode: "class",
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
+    // `xs` must come before the defaults so it sorts first in the cascade
+    screens: {
+      xs: "375px",
+      ...defaultTheme.screens,
+    },
     extend: {
       colors: {
         "oec-orange": "#FFA63F",

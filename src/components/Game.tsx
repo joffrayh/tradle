@@ -302,7 +302,15 @@ export function Game({ settingsData, updateSettings }: GameProps) {
           {aprilFoolsHint}
         </div>
       ) : null}
-      <div className="my-2">
+      <div
+        className={
+          gameEnded
+            ? "my-2"
+            : // On phones the guess bar sticks to the bottom of the screen so it
+              // stays reachable while looking at the treemap / guess rows.
+              "sticky bottom-0 z-20 -mx-2 mt-2 border-t border-slate-200/80 bg-white/90 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/90 md:static md:my-2 md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none md:dark:bg-transparent"
+        }
+      >
         {gameEnded ? (
           <>
             <Share
@@ -348,7 +356,7 @@ export function Game({ settingsData, updateSettings }: GameProps) {
           </>
         ) : (
           <form onSubmit={handleSubmit}>
-            <div className="">
+            <div className="flex items-start gap-2 md:block">
               <CountryInput
                 countryValue={countryValue}
                 setCountryValue={setCountryValue}
@@ -366,8 +374,8 @@ export function Game({ settingsData, updateSettings }: GameProps) {
               >
                 🌍 {t("guess")}
               </button> */}
-              <div className="text-left">
-                <button className="my-2 inline-block items-center justify-end rounded-xl bg-slate-800 px-4 py-2 font-bold text-white shadow-sm transition-colors hover:bg-slate-900 dark:bg-oec-orange dark:text-slate-950 dark:hover:bg-orange-300">
+              <div className="shrink-0 text-left">
+                <button className="inline-flex h-12 items-center gap-1 whitespace-nowrap rounded-xl bg-slate-800 px-4 font-bold text-white shadow-sm transition-colors hover:bg-slate-900 active:bg-slate-950 dark:bg-oec-orange dark:text-slate-950 dark:hover:bg-orange-300 dark:active:bg-orange-400 md:my-2 md:h-auto md:py-2">
                   {isAprilFools ? "🪱" : "🌍"} <span>Guess</span>
                 </button>
               </div>

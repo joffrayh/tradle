@@ -23,7 +23,7 @@ export function Panel({ title, isOpen, close, children }: PanelProps) {
     <Modal
       isOpen={isOpen}
       onRequestClose={close}
-      className="flex h-full justify-center p-2 md:p-4"
+      className="flex h-full justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))] md:p-4"
       ariaHideApp={false}
       style={{
         overlay: {
@@ -42,8 +42,8 @@ export function Panel({ title, isOpen, close, children }: PanelProps) {
         },
       }}
     >
-      <div className="w-full max-w-lg overflow-auto rounded-2xl border border-slate-200/80 bg-white/95 px-3 text-sm text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
-        <header className="mb-3 flex border-b-2 border-slate-200/80 dark:border-slate-700/80">
+      <div className="w-full max-w-lg overflow-auto overscroll-contain rounded-2xl border border-slate-200/80 bg-white/95 px-3 pb-3 text-sm text-slate-900 shadow-2xl dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+        <header className="sticky top-0 z-10 -mx-3 mb-3 flex items-center border-b-2 border-slate-200/80 bg-white/95 px-3 backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/95">
           <h2
             className="text-2xl font-bold uppercase tracking-wide text-center my-1 flex-auto"
             onClick={() => setDebug((prev) => prev + 1)}
@@ -51,8 +51,9 @@ export function Panel({ title, isOpen, close, children }: PanelProps) {
             {title}
           </h2>
           <button
-            className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+            className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:text-slate-900 active:bg-slate-200/70 dark:text-slate-400 dark:hover:text-slate-100 dark:active:bg-slate-800/70"
             type="button"
+            aria-label="Close"
             onClick={close}
           >
             ✖️

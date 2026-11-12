@@ -145,7 +145,7 @@ export function Share({
           ))}
         </div>
         <div className="flex justify-center items-center mb-6">
-          <div className="space-x-4">
+          <div>
             <CopyToClipboard
               text={[
                 title,
@@ -157,14 +157,14 @@ export function Share({
                 format: "text/plain",
               }}
             >
-              <button className="mt-4 rounded-xl bg-oec-orange p-2 font-semibold text-white transition-colors hover:bg-oec-yellow hover:text-slate-950 active:bg-oec-orange">
+              <button className="mt-4 rounded-xl bg-oec-orange px-6 py-2.5 font-semibold text-white transition-colors hover:bg-oec-yellow hover:text-slate-950 active:bg-oec-orange">
                 {t("share")}
               </button>
             </CopyToClipboard>
           </div>
         </div>
         <div className="flex justify-center items-center">
-          <div className="space-x-4">
+          <div className="flex flex-wrap justify-center gap-3">
             <a
               href="https://oec.world/en/games/connectrade"
               className="inline-block rounded-xl bg-slate-300 px-4 py-2 font-semibold text-slate-900 transition-colors hover:bg-slate-400 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
@@ -197,7 +197,7 @@ export function Share({
           format: "text/plain",
         }}
       >
-        <button className="mt-4 w-full rounded-xl bg-oec-orange p-2 font-semibold text-white transition-colors hover:bg-oec-yellow hover:text-slate-950 active:bg-oec-orange">
+        <button className="mt-4 w-full rounded-xl bg-oec-orange p-3 font-semibold text-white transition-colors hover:bg-oec-yellow hover:text-slate-950 active:bg-oec-orange">
           {t("share")}
         </button>
       </CopyToClipboard>

@@ -76,10 +76,11 @@ function App() {
         // style={{ background: "linear-gradient(#2c5363,#0f2027)" }}
       >
         <div className="w-full max-w-lg flex flex-col relative z-10 bg-white/80 text-slate-900 backdrop-blur-sm md:bg-transparent md:backdrop-blur-none dark:bg-slate-900/70 dark:text-slate-100 md:dark:bg-transparent">
-          <header className="border-b-2 border-slate-200/80 px-3 flex justify-between dark:border-slate-700/80">
+          <header className="flex items-center justify-between border-b-2 border-slate-200/80 px-3 pt-[env(safe-area-inset-top)] dark:border-slate-700/80">
             <button
-              className="mr-3 text-xl text-slate-700 transition-colors hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
+              className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-slate-700 transition-colors hover:text-slate-950 active:bg-slate-200/70 dark:text-slate-300 dark:hover:text-white dark:active:bg-slate-800/70"
               type="button"
+              aria-label="How to play"
               onClick={() => setInfoOpen(true)}
             >
               <svg
@@ -95,7 +96,7 @@ function App() {
                 />
               </svg>
             </button>
-            <h1 className="text-center my-1 flex-auto">
+            <h1 className="flex flex-auto items-center justify-center text-center">
               {/* <span className="text-red-600">TRADE</span>LE */}
               <img
                 className="block m-auto"
@@ -105,8 +106,9 @@ function App() {
               />
             </h1>
             <button
-              className="ml-3 text-xl text-slate-700 transition-colors hover:text-slate-950 dark:text-slate-300 dark:hover:text-white"
+              className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl text-slate-700 transition-colors hover:text-slate-950 active:bg-slate-200/70 dark:text-slate-300 dark:hover:text-white dark:active:bg-slate-800/70"
               type="button"
+              aria-label="Statistics"
               onClick={() => setStatsOpen(true)}
             >
               <svg
@@ -138,7 +140,7 @@ function App() {
             </button> */}
           </header>
           <Game settingsData={settingsData} updateSettings={updateSettings} />
-          <footer className="flex justify-center text-sm mt-8 mb-1">
+          <footer className="mt-8 mb-1 flex justify-center pb-[env(safe-area-inset-bottom)] text-sm">
             <a
               className="rounded bg-amber-200/85 px-2 py-1 text-center underline decoration-amber-700/70 underline-offset-2 transition-colors hover:bg-amber-200 dark:bg-amber-400/15 dark:text-amber-100 dark:decoration-amber-200/60 dark:hover:bg-amber-400/20"
               href="https://oecworld.threadless.com/mens/t-shirt/regular"
