@@ -3,6 +3,7 @@
 // Countries images => https://github.com/djaiss/mapsicon
 import { flag } from "country-emoji";
 import i18n from "../i18n";
+import { OEC_COUNTRY_IDS } from "./oecCountryIds";
 
 const countryCodesWithImage = [
   "ad",
@@ -931,6 +932,14 @@ export const fictionalCountries: Country[] = [
 export const countriesWithImage = countries.filter((c) =>
   countryCodesWithImage.includes(c.code.toLowerCase())
 );
+
+/** OEC data API id (e.g. "afnga"), or undefined if OEC has no data for it. */
+export function getOecCountryId(country?: Country): string | undefined {
+  if (!country) return undefined;
+  const iso3 = countryISOMapping[country.code]?.toLowerCase() ?? "";
+  const legacyCode = country.oecCode?.toLowerCase() ?? "";
+  return OEC_COUNTRY_IDS[iso3] ?? OEC_COUNTRY_IDS[legacyCode];
+}
 
 export function getCountryName(language: string, country: Country | undefined) {
   return country?.name;

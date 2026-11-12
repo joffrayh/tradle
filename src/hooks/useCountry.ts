@@ -1,15 +1,19 @@
 import { csv } from "d3-fetch";
 import { useEffect, useMemo, useState } from "react";
-import { countriesWithImage, Country } from "../domain/countries";
+import {
+  countriesWithImage,
+  Country,
+  getOecCountryId,
+} from "../domain/countries";
 
 interface DateCountry {
   country: string;
   date: string;
 }
 
-// The daily schedule is the official Tradle one (date -> country). The deploy
-// workflow refreshes public/data.new.csv from prod.oec.world before each build,
-// because that server doesn't allow cross-origin requests from the browser.
+// The daily schedule (date -> country) is tradle.net's. The deploy workflow
+// refreshes public/data.new.csv from tradle.net before each build, because that
+// server doesn't allow cross-origin requests from the browser.
 let schedulePromise: Promise<DateCountry[]> | null = null;
 function loadSchedule(): Promise<DateCountry[]> {
   if (schedulePromise == null) {
@@ -50,24 +54,31 @@ function findCountry(code: string): Country | undefined {
 export function useCountry(dayString: string): {
   country: Country | undefined;
   loading: boolean;
+  /** Whether the schedule has an entry for this day at all. */
+  scheduled: boolean;
 } {
   const schedule = useSchedule();
   return useMemo(() => {
-    if (schedule == null) return { country: undefined, loading: true };
+    if (schedule == null) {
+      return { country: undefined, loading: true, scheduled: false };
+    }
     const entry = schedule.find((row) => row.date === dayString);
     return {
       country: entry ? findCountry(entry.country) : undefined,
       loading: false,
+      scheduled: entry != null,
     };
   }, [schedule, dayString]);
 }
 
-/** Every country that has ever been a daily puzzle (all have trade data). */
+/** Every country that has been a daily puzzle and has OEC trade data. */
 export function useCountryPool(): Country[] {
   const schedule = useSchedule();
   return useMemo(() => {
     if (schedule == null) return [];
     const codes = new Set(schedule.map((row) => row.country));
-    return countriesWithImage.filter((country) => codes.has(country.code));
+    return countriesWithImage.filter(
+      (country) => codes.has(country.code) && getOecCountryId(country) != null
+    );
   }, [schedule]);
 }

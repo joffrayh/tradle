@@ -12,6 +12,7 @@ import {
   countryISOMapping,
   getFictionalCountryByName,
   getCountryByName,
+  getOecCountryId,
 } from "../domain/countries";
 import { getCompassDirection } from "../domain/geography";
 import { useGuesses } from "../hooks/useGuesses";
@@ -24,7 +25,6 @@ import { SettingsData } from "../hooks/useSettings";
 import { useMode } from "../hooks/useMode";
 import { useCountry, useCountryPool } from "../hooks/useCountry";
 import { useUnlimitedGame } from "../hooks/useUnlimitedGame";
-import { OEC_COUNTRY_IDS } from "../domain/oecCountryIds";
 import { Treemap } from "./Treemap";
 import { useOECSession, type OECSession } from "../hooks/useOECSession";
 // import { BotMarketLink } from "./BotMarketLink";
@@ -55,8 +55,9 @@ function getDayString() {
     console.warn("Invalid date parameter, using current date instead");
   }
 
-  // Fall back to current date if no valid date parameter
-  return DateTime.now().toUTC().toFormat("yyyy-MM-dd");
+  // Fall back to the current *local* date, like tradle.net does, so the
+  // daily country changes at the player's midnight and matches that site.
+  return DateTime.now().toFormat("yyyy-MM-dd");
 }
 
 const MAX_TRY_COUNT = 6;
@@ -74,7 +75,7 @@ export function Game({ settingsData, updateSettings }: GameProps) {
 
   // Add a check to see if we're using a historical date
   const isHistoricalPuzzle = useMemo(() => {
-    const currentDayString = DateTime.now().toUTC().toFormat("yyyy-MM-dd");
+    const currentDayString = DateTime.now().toFormat("yyyy-MM-dd");
     return !isUnlimited && dayString !== currentDayString;
   }, [dayString, isUnlimited]);
 
@@ -176,9 +177,7 @@ export function Game({ settingsData, updateSettings }: GameProps) {
   const country3LetterCode = country?.code
     ? countryISOMapping[country.code]?.toLowerCase()
     : "";
-  const oecId =
-    OEC_COUNTRY_IDS[country3LetterCode] ??
-    OEC_COUNTRY_IDS[country?.oecCode?.toLowerCase() ?? ""];
+  const oecId = getOecCountryId(country);
   const oecLink = isAprilFools
     ? "https://oec.world/"
     : `https://oec.world/en/profile/country/${country3LetterCode}`;
@@ -232,7 +231,9 @@ export function Game({ settingsData, updateSettings }: GameProps) {
         <Treemap oecId={oecId} />
       ) : !isUnlimited && !daily.loading ? (
         <div className="my-4 rounded-xl border border-slate-300/80 bg-white/70 p-4 text-center dark:border-slate-700 dark:bg-slate-900/70">
-          There&apos;s no daily puzzle scheduled for {dayString} yet.
+          {daily.scheduled
+            ? "Today's country isn't supported here, so there's no daily puzzle today."
+            : `There's no daily puzzle scheduled for ${dayString} yet.`}
           <button
             type="button"
             className="mt-3 block w-full rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white dark:bg-oec-orange dark:text-slate-950"
