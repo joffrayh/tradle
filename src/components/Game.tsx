@@ -22,11 +22,11 @@ import { Guesses } from "./Guesses";
 import { useTranslation } from "react-i18next";
 import { SettingsData } from "../hooks/useSettings";
 import { useMode } from "../hooks/useMode";
-import { useCountry } from "../hooks/useCountry";
-import axios from "axios";
-import useConsentFromSearchParams from "../hooks/useConsentSearchParam";
+import { useCountry, useCountryPool } from "../hooks/useCountry";
+import { useUnlimitedGame } from "../hooks/useUnlimitedGame";
+import { OEC_COUNTRY_IDS } from "../domain/oecCountryIds";
+import { Treemap } from "./Treemap";
 import { useOECSession, type OECSession } from "../hooks/useOECSession";
-import type { Guess } from "../domain/guess";
 // import { BotMarketLink } from "./BotMarketLink";
 import { OecLink } from "./OecLink";
 import {
@@ -68,32 +68,34 @@ interface GameProps {
 
 export function Game({ settingsData, updateSettings }: GameProps) {
   const { t, i18n } = useTranslation();
+  const isUnlimited = settingsData.gameMode === "unlimited";
   const dayString = useMemo(getDayString, []);
-  const isAprilFools = dayString.endsWith("04-01");
+  const isAprilFools = !isUnlimited && dayString.endsWith("04-01");
 
   // Add a check to see if we're using a historical date
   const isHistoricalPuzzle = useMemo(() => {
     const currentDayString = DateTime.now().toUTC().toFormat("yyyy-MM-dd");
-    return dayString !== currentDayString;
-  }, [dayString]);
+    return !isUnlimited && dayString !== currentDayString;
+  }, [dayString, isUnlimited]);
 
   const countryInputRef = useRef<HTMLInputElement>(null);
 
-  const consent = useConsentFromSearchParams();
-
   const session: OECSession = useOECSession();
 
-  const countryData = useCountry(`${dayString}`);
-  let country = countryData[0];
+  const daily = useCountry(dayString);
+  const countryPool = useCountryPool();
+  const unlimited = useUnlimitedGame(countryPool, MAX_TRY_COUNT);
+  const [dailyGuesses, addDailyGuess] = useGuesses(dayString);
 
+  let country = isUnlimited ? unlimited.country : daily.country;
   if (isAprilFools) {
     country = APRIL_FOOLS_TARGET;
   }
+  const guesses = isUnlimited ? unlimited.guesses : dailyGuesses;
+  const addGuess = isUnlimited ? unlimited.addGuess : addDailyGuess;
 
-  const [ipData, setIpData] = useState(null);
   const [currentGuess, setCurrentGuess] = useState<string>("");
   const [countryValue, setCountryValue] = useState<string>("");
-  const [guesses, addGuess] = useGuesses(dayString);
   const [hideImageMode, setHideImageMode] = useMode(
     "hideImageMode",
     dayString,
@@ -110,51 +112,6 @@ export function Game({ settingsData, updateSettings }: GameProps) {
     guesses[guesses.length - 1]?.distance === 0;
   const latestGuess = guesses[guesses.length - 1];
   const aprilFoolsHint = isAprilFools ? getAprilFoolsHint(latestGuess) : null;
-
-  // Get IP data at the very begining
-  useEffect(() => {
-    const getIpData = async () => {
-      const res = await axios.get("https://geolocation-db.com/json/");
-      setIpData(res.data);
-    };
-    if (consent) {
-      getIpData();
-    }
-  }, [consent]);
-
-  // Callback for save score
-  const saveScore = useCallback(
-    (guesses, won) => {
-      if (consent) {
-        // console.log("saveScore!", consent, country, guesses, ipData, won);
-        // Save score to db
-        fetch("https://oec.world/api/games/score", {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-          method: "POST",
-          body: JSON.stringify({
-            game: "tradle",
-            meta: {
-              user: ipData,
-              ...(session ? { userId: session?.id } : {}),
-            },
-            answer: {
-              country: country,
-            },
-            submission: { guesses },
-            won,
-          }),
-        })
-          // .then((dataRes) => console.log(dataRes))
-          .catch((dataRes) =>
-            console.error("Error saving tradle score", dataRes)
-          );
-      }
-    },
-    [consent, country, ipData, session]
-  );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
@@ -176,21 +133,21 @@ export function Game({ settingsData, updateSettings }: GameProps) {
         country: guessedCountry,
       };
 
-      const newGuesses: Guess[] = addGuess(newGuess);
+      addGuess(newGuess);
       setCurrentGuess("");
       setCountryValue("");
-
-      const gameEnded =
-        newGuesses.length === MAX_TRY_COUNT ||
-        newGuesses[newGuesses.length - 1]?.distance === 0;
-
-      if (gameEnded) {
-        const newWon = newGuess.distance === 0;
-        saveScore(newGuesses, newWon);
-      }
     },
-    [addGuess, country, currentGuess, t, isAprilFools, saveScore]
+    [addGuess, country, currentGuess, t, isAprilFools]
   );
+
+  const { nextRound } = unlimited;
+  const handleNextRound = useCallback(() => {
+    toast.dismiss();
+    setCurrentGuess("");
+    setCountryValue("");
+    nextRound();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [nextRound]);
 
   useEffect(() => {
     if (
@@ -215,18 +172,16 @@ export function Game({ settingsData, updateSettings }: GameProps) {
     });
   }, [settingsData.distanceUnit, updateSettings]);
 
-  let iframeSrc = `${process.env.PUBLIC_URL}/aprilfools.html`;
-  let oecLink = "https://oec.world/";
+  const aprilFoolsSrc = `${process.env.PUBLIC_URL}/aprilfools.html`;
   const country3LetterCode = country?.code
     ? countryISOMapping[country.code]?.toLowerCase()
     : "";
-  if (!isAprilFools) {
-    const oecCode = country?.oecCode
-      ? country?.oecCode?.toLowerCase()
-      : country3LetterCode;
-    iframeSrc = `https://oec.world/en/visualize-legacy/embed/tree_map/hs92/export/${oecCode}/all/show/2023/?controls=false&title=false&click=false`;
-    oecLink = `https://oec.world/en/profile/country/${country3LetterCode}`;
-  }
+  const oecId =
+    OEC_COUNTRY_IDS[country3LetterCode] ??
+    OEC_COUNTRY_IDS[country?.oecCode?.toLowerCase() ?? ""];
+  const oecLink = isAprilFools
+    ? "https://oec.world/"
+    : `https://oec.world/en/profile/country/${country3LetterCode}`;
 
   return (
     <div className="flex-grow flex flex-col mx-2 relative">
@@ -259,24 +214,39 @@ export function Game({ settingsData, updateSettings }: GameProps) {
           ? APRIL_FOOLS_PROMPT
           : "Guess which country exports these products!"}
       </h2>
-      <div className="relative h-0 pt-[25px] pb-96 md:pb-[70%]">
-        {country3LetterCode || isAprilFools ? (
+      {isUnlimited ? (
+        <p className="mb-1 text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Unlimited · {unlimited.won}/{unlimited.played} won
+        </p>
+      ) : null}
+      {isAprilFools ? (
+        <div className="relative h-0 pt-[25px] pb-96 md:pb-[70%]">
           <iframe
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-            }}
-            title={isAprilFools ? "Planet to guess" : "Country to guess"}
-            width="390"
-            height="315"
-            src={iframeSrc}
+            className="absolute inset-0 h-full w-full"
+            title="Planet to guess"
+            src={aprilFoolsSrc}
             frameBorder="0"
           />
-        ) : null}
-      </div>
+        </div>
+      ) : oecId ? (
+        <Treemap oecId={oecId} />
+      ) : !isUnlimited && !daily.loading ? (
+        <div className="my-4 rounded-xl border border-slate-300/80 bg-white/70 p-4 text-center dark:border-slate-700 dark:bg-slate-900/70">
+          There&apos;s no daily puzzle scheduled for {dayString} yet.
+          <button
+            type="button"
+            className="mt-3 block w-full rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white dark:bg-oec-orange dark:text-slate-950"
+            onClick={() => updateSettings({ gameMode: "unlimited" })}
+          >
+            Play unlimited instead
+          </button>
+        </div>
+      ) : (
+        <div
+          className="w-full animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800/70"
+          style={{ height: "clamp(16rem, 52vh, 24rem)" }}
+        />
+      )}
       {rotationMode && !hideImageMode && !gameEnded && (
         <button
           className="mb-2 rounded-xl border border-slate-300/90 bg-white/70 px-4 py-2 uppercase text-slate-800 shadow-sm transition-colors hover:bg-white active:bg-slate-100 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-100 dark:hover:bg-slate-900 dark:active:bg-slate-800"
@@ -287,6 +257,7 @@ export function Game({ settingsData, updateSettings }: GameProps) {
         </button>
       )}
       <Guesses
+        key={isUnlimited ? `unlimited-${unlimited.round}` : "daily"}
         rowCount={MAX_TRY_COUNT}
         guesses={guesses}
         settingsData={settingsData}
@@ -308,7 +279,25 @@ export function Game({ settingsData, updateSettings }: GameProps) {
               "sticky bottom-0 z-20 -mx-2 mt-2 border-t border-slate-200/80 bg-white/90 px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-900/90 md:static md:my-2 md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none md:dark:bg-transparent"
         }
       >
-        {gameEnded ? (
+        {gameEnded && isUnlimited ? (
+          <>
+            <button
+              type="button"
+              className="mt-4 w-full rounded-xl bg-oec-orange p-3 font-semibold text-white transition-colors hover:bg-oec-yellow hover:text-slate-950 active:bg-oec-orange"
+              onClick={handleNextRound}
+            >
+              Next country →
+            </button>
+            <a
+              className="mt-4 flex w-full justify-center text-center underline"
+              href={oecLink}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t("showOnGoogleMaps")}
+            </a>
+          </>
+        ) : gameEnded ? (
           <>
             <Share
               guesses={guesses}

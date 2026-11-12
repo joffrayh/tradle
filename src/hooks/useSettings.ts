@@ -5,6 +5,7 @@ export interface SettingsData {
   rotationMode: boolean;
   distanceUnit: "km" | "miles";
   theme: "light" | "dark";
+  gameMode: "daily" | "unlimited";
 }
 
 const defaultSettingsData: SettingsData = {
@@ -14,6 +15,7 @@ const defaultSettingsData: SettingsData = {
   theme: window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light",
+  gameMode: "daily",
 };
 
 function loadSettings(): SettingsData {

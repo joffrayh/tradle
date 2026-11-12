@@ -16,6 +16,7 @@
     "axios": "^0.27.2",
     "country-emoji": "^1.5.6",
     "d3-fetch": "^3.0.1",
+    "d3-hierarchy": "^3.1.2",
     "geolib": "^3.3.3",
     "i18next": "^21.6.7",
     "i18next-browser-languagedetector": "^6.1.2",
@@ -58,6 +59,7 @@
   },
   "devDependencies": {
     "@types/d3-fetch": "^3.0.1",
+    "@types/d3-hierarchy": "^3.1.7",
     "@types/luxon": "^2.0.9",
     "@types/react-autosuggest": "^10.1.5",
     "@types/react-copy-to-clipboard": "^5.0.2",

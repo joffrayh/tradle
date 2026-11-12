@@ -1,0 +1,270 @@
+import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+// Export data comes straight from OEC's public data API (CORS-enabled, no
+// cookies) and is drawn here, instead of embedding an oec.world page — the
+// embed brought OEC's cookie banner and cookies with it.
+const API =
+  "https://api-v2.oec.world/tesseract/data.jsonrecords?cube=trade_i_baci_a_92&drilldowns=Year,HS4&measures=Trade+Value&parents=true";
+const YEAR = 2023; // Same year as the official Tradle treemap
+
+interface Row {
+  "Section ID": number;
+  Section: string;
+  "HS4 ID": number;
+  HS4: string;
+  "Trade Value": number;
+}
+
+interface Leaf {
+  id: number;
+  name: string;
+  sectionId: number;
+  section: string;
+  value: number;
+}
+
+const SECTION_COLORS: Record<number, string> = {
+  1: "#F4C27A", // Animal Products
+  2: "#8BC34A", // Vegetable Products
+  3: "#D6C25B", // Animal and Vegetable Bi-Products
+  4: "#C9A227", // Foodstuffs
+  5: "#A0522D", // Mineral Products
+  6: "#D35BA6", // Chemical Products
+  7: "#7E57C2", // Plastics and Rubbers
+  8: "#B07A5A", // Animal Hides
+  9: "#7B9A5B", // Wood Products
+  10: "#E0D6A8", // Paper Goods
+  11: "#4DB6AC", // Textiles
+  12: "#26A69A", // Footwear and Headwear
+  13: "#B0A99F", // Stone and Glass
+  14: "#E6B800", // Precious Metals
+  15: "#8D99AE", // Metals
+  16: "#3F7FD9", // Machines
+  17: "#5EC8F2", // Transportation
+  18: "#2E4F7A", // Instruments
+  19: "#5D4037", // Weapons
+  20: "#F48FB1", // Miscellaneous
+  21: "#FF8A65", // Arts and Antiques
+  22: "#78909C", // Unspecified
+};
+
+function textColor(hex: string) {
+  const n = parseInt(hex.slice(1), 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 150 ? "#0f172a" : "#ffffff";
+}
+
+export function formatMoney(value: number) {
+  const units: [number, string][] = [
+    [1e12, "T"],
+    [1e9, "B"],
+    [1e6, "M"],
+    [1e3, "k"],
+  ];
+  for (const [size, suffix] of units) {
+    if (value >= size) return `$${(value / size).toFixed(1)}${suffix}`;
+  }
+  return `$${Math.round(value)}`;
+}
+
+const cache = new Map<string, Promise<Leaf[]>>();
+function fetchExports(oecId: string): Promise<Leaf[]> {
+  let request = cache.get(oecId);
+  if (!request) {
+    const url = `${API}&include=Year:${YEAR};Exporter+Country:${oecId}`;
+    request = fetch(url, { credentials: "omit" })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((json: { data: Row[] }) =>
+        json.data
+          .filter((row) => row["Trade Value"] > 0)
+          .map((row) => ({
+            id: row["HS4 ID"],
+            name: row.HS4,
+            sectionId: row["Section ID"],
+            section: row.Section,
+            value: row["Trade Value"],
+          }))
+      )
+      .catch((error) => {
+        cache.delete(oecId);
+        throw error;
+      });
+    cache.set(oecId, request);
+  }
+  return request;
+}
+
+function useElementSize<T extends HTMLElement>() {
+  const ref = useRef<T>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize({ width: Math.round(width), height: Math.round(height) });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, size] as const;
+}
+
+interface TreemapProps {
+  oecId: string;
+}
+
+export function Treemap({ oecId }: TreemapProps) {
+  const [leaves, setLeaves] = useState<Leaf[] | null>(null);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [ref, { width, height }] = useElementSize<HTMLDivElement>();
+
+  useEffect(() => {
+    let cancelled = false;
+    setLeaves(null);
+    setError(false);
+    setSelected(null);
+    fetchExports(oecId)
+      .then((data) => !cancelled && setLeaves(data))
+      .catch(() => !cancelled && setError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [oecId, attempt]);
+
+  const total = useMemo(
+    () => (leaves ?? []).reduce((sum, leaf) => sum + leaf.value, 0),
+    [leaves]
+  );
+
+  const tiles = useMemo(() => {
+    if (!leaves || width === 0 || height === 0) return [];
+    const sections = new Map<number, Leaf[]>();
+    for (const leaf of leaves) {
+      sections.set(leaf.sectionId, [
+        ...(sections.get(leaf.sectionId) ?? []),
+        leaf,
+      ]);
+    }
+    type Node = { children?: Node[]; leaf?: Leaf };
+    const root = hierarchy<Node>({
+      children: Array.from(sections.values()).map((items) => ({
+        children: items.map((leaf) => ({ leaf })),
+      })),
+    })
+      .sum((node) => node.leaf?.value ?? 0)
+      .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
+    treemap<Node>()
+      .tile(treemapSquarify)
+      .size([width, height])
+      .paddingInner(1)
+      .round(true)(root);
+    return root.leaves().map((node) => {
+      const n = node as typeof node & {
+        x0: number;
+        y0: number;
+        x1: number;
+        y1: number;
+      };
+      return {
+        leaf: node.data.leaf as Leaf,
+        x: n.x0,
+        y: n.y0,
+        w: n.x1 - n.x0,
+        h: n.y1 - n.y0,
+      };
+    });
+  }, [leaves, width, height]);
+
+  const share = useCallback(
+    (value: number) => `${((value / (total || 1)) * 100).toFixed(1)}%`,
+    [total]
+  );
+  const selectedLeaf = leaves?.find((leaf) => leaf.id === selected);
+
+  return (
+    <div>
+      <p className="mb-1 text-center text-slate-700 dark:text-slate-300">
+        {leaves ? `Total exports (${YEAR}): ${formatMoney(total)}` : " "}
+      </p>
+      <div
+        ref={ref}
+        className="relative w-full overflow-hidden rounded-lg bg-slate-200/70 dark:bg-slate-800/70"
+        style={{ height: "clamp(16rem, 52vh, 24rem)" }}
+      >
+        {error ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">
+            <p>Couldn&apos;t load this country&apos;s export data.</p>
+            <button
+              type="button"
+              className="rounded-xl bg-slate-800 px-4 py-2 font-semibold text-white dark:bg-oec-orange dark:text-slate-950"
+              onClick={() => setAttempt((n) => n + 1)}
+            >
+              Try again
+            </button>
+          </div>
+        ) : !leaves ? (
+          <div className="h-full w-full animate-pulse" aria-label="Loading" />
+        ) : (
+          tiles.map(({ leaf, x, y, w, h }) => {
+            const bg = SECTION_COLORS[leaf.sectionId] ?? "#94a3b8";
+            const fontSize = Math.max(9, Math.min(28, Math.sqrt(w * h) / 7));
+            const showName = w >= 44 && h >= fontSize * 2.4;
+            const showShare = w >= 30 && h >= fontSize * 1.3;
+            const isSelected = leaf.id === selected;
+            return (
+              <div
+                key={leaf.id}
+                role="button"
+                tabIndex={-1}
+                title={`${leaf.name} — ${share(leaf.value)}`}
+                onClick={() => setSelected(isSelected ? null : leaf.id)}
+                className="absolute cursor-pointer overflow-hidden p-1 leading-tight"
+                style={{
+                  left: x,
+                  top: y,
+                  width: w,
+                  height: h,
+                  backgroundColor: bg,
+                  color: textColor(bg),
+                  fontSize,
+                  outline: isSelected ? "3px solid #0f172a" : undefined,
+                  outlineOffset: -3,
+                  zIndex: isSelected ? 1 : undefined,
+                }}
+              >
+                {showName && (
+                  <div className="break-words font-semibold">{leaf.name}</div>
+                )}
+                {showShare && (
+                  <div className="opacity-90">{share(leaf.value)}</div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+      <p className="mt-1 min-h-[1.5rem] text-center text-sm text-slate-700 dark:text-slate-300">
+        {selectedLeaf
+          ? `${selectedLeaf.name} · ${share(
+              selectedLeaf.value
+            )} · ${formatMoney(selectedLeaf.value)}`
+          : leaves
+          ? "Tap a tile to see the product"
+          : ""}
+      </p>
+    </div>
+  );
+}

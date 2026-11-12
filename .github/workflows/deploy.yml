@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Rebuild daily so the bundled schedule picks up new days from the official game
+  schedule:
+    - cron: "17 0 * * *"
 
 permissions:
   contents: read
@@ -25,6 +28,19 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Refresh daily schedule from the official Tradle
+        # prod.oec.world doesn't allow cross-origin fetches, so the browser
+        # can't read it directly. Bake the latest copy into the build instead,
+        # falling back to the committed one if the download looks wrong.
+        run: |
+          if curl -fsSL https://prod.oec.world/en/tradle/data.new.csv -o /tmp/schedule.csv \
+            && head -1 /tmp/schedule.csv | grep -q '^date,country' \
+            && [ "$(wc -l < /tmp/schedule.csv)" -ge "$(wc -l < public/data.new.csv)" ]; then
+            cp /tmp/schedule.csv public/data.new.csv
+            echo "Using live schedule (last entry: $(tail -1 public/data.new.csv))"
+          else
+            echo "::warning::Could not refresh the daily schedule; using the committed copy"
+          fi
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

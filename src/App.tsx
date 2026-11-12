@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Flip, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Game } from "./components/Game";
+import { ModeToggle } from "./components/ModeToggle";
 import { Infos } from "./components/panels/Infos";
 import { InfosFr } from "./components/panels/InfosFr";
 import { Settings } from "./components/panels/Settings";
@@ -143,7 +144,15 @@ function App() {
               </svg>
             </button> */}
           </header>
-          <Game settingsData={settingsData} updateSettings={updateSettings} />
+          <ModeToggle
+            mode={settingsData.gameMode}
+            onChange={(gameMode) => updateSettings({ gameMode })}
+          />
+          <Game
+            key={settingsData.gameMode}
+            settingsData={settingsData}
+            updateSettings={updateSettings}
+          />
           <footer className="mt-8 mb-1 flex justify-center pb-[env(safe-area-inset-bottom)] text-sm">
             <a
               className="rounded bg-amber-200/85 px-2 py-1 text-center underline decoration-amber-700/70 underline-offset-2 transition-colors hover:bg-amber-200 dark:bg-amber-400/15 dark:text-amber-100 dark:decoration-amber-200/60 dark:hover:bg-amber-400/20"
