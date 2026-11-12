@@ -209,16 +209,13 @@ export function Game({ settingsData, updateSettings }: GameProps) {
     }
   }, [country, guesses, i18n.resolvedLanguage]);
 
-  const aprilFoolsBasePath = window.location.pathname.startsWith("/en/tradle")
-    ? "/en/tradle"
-    : "";
   const toggleDistanceUnit = useCallback(() => {
     updateSettings({
       distanceUnit: settingsData.distanceUnit === "km" ? "miles" : "km",
     });
   }, [settingsData.distanceUnit, updateSettings]);
 
-  let iframeSrc = `${aprilFoolsBasePath}/aprilfools.html`;
+  let iframeSrc = `${process.env.PUBLIC_URL}/aprilfools.html`;
   let oecLink = "https://oec.world/";
   const country3LetterCode = country?.code
     ? countryISOMapping[country.code]?.toLowerCase()

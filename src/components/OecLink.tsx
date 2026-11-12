@@ -14,7 +14,7 @@ export function OecLink() {
         style={{ display: "inline-block" }}
       >
         <img
-          src="/en/tradle/images/oec-banner.png"
+          src={`${process.env.PUBLIC_URL}/images/oec-banner.png`}
           alt="OEC - Decode Global Trade. Unlock Strategic Insight."
           style={{
             maxWidth: "100%",

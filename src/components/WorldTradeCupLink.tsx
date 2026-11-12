@@ -14,7 +14,7 @@ export function WorldTradeCupLink() {
         style={{ display: "inline-block" }}
       >
         <img
-          src="/en/tradle/images/wt-cup.png"
+          src={`${process.env.PUBLIC_URL}/images/wt-cup.png`}
           alt="World Trade Cup - Which country trades like a champion?"
           style={{
             maxWidth: "100%",

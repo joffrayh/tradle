@@ -1,7 +1,7 @@
 {
   "name": "tradle",
   "version": "0.1.0",
-  "homepage": "/en/tradle",
+  "homepage": "https://joffrayh.github.io/tradle-mobile",
   "private": true,
   "dependencies": {
     "@mantine/core": "^3.6.9",

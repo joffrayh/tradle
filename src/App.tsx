@@ -20,8 +20,8 @@ function App() {
   const [settingsData, updateSettings] = useSettings();
   const headerLogoSrc =
     settingsData.theme === "dark"
-      ? "/en/tradle/images/oec-tradle-logo-dark-bg.png"
-      : "/en/tradle/images/oec-tradle-logo.png";
+      ? `${process.env.PUBLIC_URL}/images/oec-tradle-logo-dark-bg.png`
+      : `${process.env.PUBLIC_URL}/images/oec-tradle-logo.png`;
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -37,7 +37,11 @@ function App() {
   return (
     <>
       <div className="absolute hidden md:block">
-        <img src="/en/tradle/images/top-ship.png" alt="logo" width="371" />
+        <img
+          src={`${process.env.PUBLIC_URL}/images/top-ship.png`}
+          alt="logo"
+          width="371"
+        />
       </div>
       <ToastContainer
         hideProgressBar
@@ -152,7 +156,11 @@ function App() {
           </footer>
         </div>
         <div className="absolute bottom-0 right-0 z-0">
-          <img src="/en/tradle/images/bottom-ship.png" alt="logo" width="342" />
+          <img
+            src={`${process.env.PUBLIC_URL}/images/bottom-ship.png`}
+            alt="logo"
+            width="342"
+          />
         </div>
       </div>
     </>

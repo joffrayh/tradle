@@ -11,7 +11,7 @@ export function useCountry(dayString: string): [Country | undefined] {
   const [forcedCountryCode, setForcedCountryCode] = useState("");
 
   useEffect(() => {
-    csv("/en/tradle/data.new.csv", (d) => {
+    csv(`${process.env.PUBLIC_URL}/data.new.csv`, (d) => {
       return { country: d.country, date: d.date };
     }).then((data) => {
       setForcedCountryCode(

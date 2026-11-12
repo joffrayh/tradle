@@ -14,7 +14,7 @@ export function BotMarketLink() {
         className="inline-block overflow-hidden rounded-sm border border-slate-300 shadow-sm shadow-slate-300/70 transition-shadow hover:shadow-md hover:shadow-slate-400/60 dark:border-slate-700 dark:shadow-slate-950/40 dark:hover:shadow-black/50"
       >
         <img
-          src="/en/tradle/images/botmarket.jpg"
+          src={`${process.env.PUBLIC_URL}/images/botmarket.jpg`}
           alt="BotMarket - The Data Marketplace for AI Agents"
           className="block h-auto max-w-full"
         />
