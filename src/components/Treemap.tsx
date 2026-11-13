@@ -45,7 +45,7 @@ const SECTION_COLORS: Record<number, string> = {
   9: "#7B9A5B", // Wood Products
   10: "#E0D6A8", // Paper Goods
   11: "#4DB6AC", // Textiles
-  12: "#26A69A", // Footwear and Headwear
+  12: "#C62828", // Footwear and Headwear
   13: "#B0A99F", // Stone and Glass
   14: "#E6B800", // Precious Metals
   15: "#8D99AE", // Metals
@@ -55,7 +55,7 @@ const SECTION_COLORS: Record<number, string> = {
   19: "#5D4037", // Weapons
   20: "#F48FB1", // Miscellaneous
   21: "#FF8A65", // Arts and Antiques
-  22: "#78909C", // Unspecified
+  22: "#37474F", // Unspecified
 };
 
 // Minimal line icons for the section filter buttons (24x24, drawn with
