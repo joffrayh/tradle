@@ -72,12 +72,18 @@ input,
 }
 
 /*
- * Treemap height. svh ("small viewport height") stays the same whether the
- * mobile browser's toolbars are showing or hidden; plain vh changes as they
- * slide in and out, which resized the treemap and reshuffled its tiles.
- * The vh line is a fallback for browsers without svh.
+ * Treemap size. The height follows the width (10:9), never the screen height:
+ * mobile browsers' toolbars slide in and out as you scroll, and some (e.g.
+ * Firefox and Chrome on iPhone) resize the page when they do, which changed
+ * any screen-height-based size and reshuffled the tiles.
  */
 .treemap-height {
-  height: clamp(16rem, 52vh, 24rem);
-  height: clamp(16rem, 52svh, 24rem);
+  aspect-ratio: 10 / 9;
+  min-height: 16rem;
+  max-height: 24rem;
+}
+@supports not (aspect-ratio: 1) {
+  .treemap-height {
+    height: 20rem;
+  }
 }
