@@ -153,15 +153,18 @@ function App() {
             settingsData={settingsData}
             updateSettings={updateSettings}
           />
-          <footer className="mt-8 mb-1 flex justify-center pb-[env(safe-area-inset-bottom)] text-sm">
+          <footer className="mt-8 mb-1 px-4 pb-[env(safe-area-inset-bottom)] text-center text-xs text-slate-500 dark:text-slate-400">
+            This is an unofficial copy of{" "}
             <a
-              className="rounded bg-amber-200/85 px-2 py-1 text-center underline decoration-amber-700/70 underline-offset-2 transition-colors hover:bg-amber-200 dark:bg-amber-400/15 dark:text-amber-100 dark:decoration-amber-200/60 dark:hover:bg-amber-400/20"
-              href="https://oecworld.threadless.com/mens/t-shirt/regular"
+              className="underline underline-offset-2 hover:text-slate-700 dark:hover:text-slate-200"
+              href="https://tradle.net"
               target="_blank"
               rel="noopener noreferrer"
             >
-              Buy Tradle Merch! 👕
+              Tradle
             </a>
+            , made only to improve the experience, especially on mobile. All
+            credit for the game goes to the original.
           </footer>
         </div>
         <div className="absolute bottom-0 right-0 z-0">

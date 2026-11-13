@@ -28,7 +28,6 @@ import { useUnlimitedGame } from "../hooks/useUnlimitedGame";
 import { Treemap, useLocalDataIndex } from "./Treemap";
 import { useOECSession, type OECSession } from "../hooks/useOECSession";
 // import { BotMarketLink } from "./BotMarketLink";
-import { OecLink } from "./OecLink";
 import {
   APRIL_FOOLS_CELEBRATION,
   APRIL_FOOLS_PLACEHOLDER,
@@ -224,8 +223,6 @@ export function Game({ settingsData, updateSettings }: GameProps) {
           {t("showCountry")}
         </button>
       )}
-      {/* <div className="my-1 mx-auto"> */}
-      <OecLink />
       {/* <BotMarketLink /> */}
       <h2 className="mb-1 text-center font-bold text-slate-900 dark:text-slate-100">
         Hi{session ? `, ${session?.name || session?.email}` : ""}!{" "}

@@ -23,6 +23,14 @@ module.exports = {
             opacity: "1",
           },
         },
+        conceal: {
+          "0%": {
+            opacity: "1",
+          },
+          "100%": {
+            opacity: "0",
+          },
+        },
         pop: {
           "0%": {
             transform: "scale(1)",
@@ -37,7 +45,11 @@ module.exports = {
       },
       animation: {
         reveal: "reveal 200ms forwards",
-        "fade-in": "reveal 250ms ease-out both",
+        // Section switch in the treemap: the old tiles fade out, then the new
+        // ones fade in, so the two layouts are never visible on top of
+        // each other.
+        "fade-out": "conceal 120ms ease-in forwards",
+        "fade-in": "reveal 180ms ease-out 100ms both",
         pop: "pop 500ms ease-out forwards",
       },
     },

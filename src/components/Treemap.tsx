@@ -455,8 +455,8 @@ export function Treemap({ code, oecId }: TreemapProps) {
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [section, setSection] = useState<number | null>(null);
-  // While switching sections the previous tiles stay underneath for a moment
-  // and the new ones fade in over them, instead of swapping instantly.
+  // While switching sections the previous tiles stay for a moment to fade
+  // out before the new ones fade in, instead of swapping instantly.
   const [layerKey, setLayerKey] = useState(0);
   const [outgoing, setOutgoing] = useState<{
     key: number;
@@ -637,7 +637,7 @@ export function Treemap({ code, oecId }: TreemapProps) {
                 selected={null}
                 onSelect={setSelected}
                 share={share}
-                className="pointer-events-none"
+                className="pointer-events-none motion-safe:animate-fade-out motion-reduce:hidden"
               />
             )}
             <TileLayer
