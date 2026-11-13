@@ -17,10 +17,17 @@ interface DateCountry {
 let schedulePromise: Promise<DateCountry[]> | null = null;
 function loadSchedule(): Promise<DateCountry[]> {
   if (schedulePromise == null) {
-    schedulePromise = csv(`${process.env.PUBLIC_URL}/data.new.csv`, (d) => ({
-      country: (d.country ?? "").toUpperCase(),
-      date: d.date ?? "",
-    })).catch((error) => {
+    // "no-cache" makes the browser revalidate with the server every time.
+    // Without it a phone could reuse a schedule cached from an earlier deploy
+    // and show the wrong country until the page was refreshed.
+    schedulePromise = csv(
+      `${process.env.PUBLIC_URL}/data.new.csv`,
+      { cache: "no-cache" },
+      (d) => ({
+        country: (d.country ?? "").toUpperCase(),
+        date: d.date ?? "",
+      })
+    ).catch((error) => {
       schedulePromise = null; // allow a retry on the next mount
       throw error;
     });

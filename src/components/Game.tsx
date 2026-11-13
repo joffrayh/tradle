@@ -92,7 +92,23 @@ export function Game({ settingsData, updateSettings }: GameProps) {
   if (isAprilFools) {
     country = APRIL_FOOLS_TARGET;
   }
-  const guesses = isUnlimited ? unlimited.guesses : dailyGuesses;
+  const storedGuesses = isUnlimited ? unlimited.guesses : dailyGuesses;
+  // Score every guess against the current target rather than trusting the
+  // distance and direction saved when it was made. If the target changed
+  // after guessing (e.g. a stale schedule was loaded first), the saved
+  // values describe a different country and the arrows would be wrong.
+  const guesses = useMemo(() => {
+    const target = country;
+    if (!target || isAprilFools) return storedGuesses;
+    return storedGuesses.map((guess) => {
+      if (!guess.country) return guess;
+      const distance = geolib.getDistance(guess.country, target);
+      const direction = getCompassDirection(guess.country, target);
+      return distance === guess.distance && direction === guess.direction
+        ? guess
+        : { ...guess, distance, direction };
+    });
+  }, [storedGuesses, country, isAprilFools]);
   const addGuess = isUnlimited ? unlimited.addGuess : addDailyGuess;
 
   const [currentGuess, setCurrentGuess] = useState<string>("");
