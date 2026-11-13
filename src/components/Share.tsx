@@ -14,6 +14,10 @@ import { SettingsData } from "../hooks/useSettings";
 
 const START_DATE = DateTime.fromISO("2022-03-06");
 
+// Link to this site (e.g. https://joffrayh.github.io/tradle), worked out from
+// where the page is served so it stays right if the address changes.
+const SITE_URL = `${window.location.origin}${process.env.PUBLIC_URL}`;
+
 const APRIL_FOOLS_SHARE_SQUARES: Record<string, string> = {
   "🟩": "🟧",
   "🟨": "🟫",
@@ -146,11 +150,7 @@ export function Share({
         <div className="flex justify-center items-center mb-6">
           <div>
             <CopyToClipboard
-              text={[
-                title,
-                guessesString,
-                "https://oec.world/en/games/tradle",
-              ].join("\n")}
+              text={[title, guessesString, SITE_URL].join("\n")}
               onCopy={() => toast(t("copy"))}
               options={{
                 format: "text/plain",
@@ -184,9 +184,7 @@ export function Share({
         </div>
       </Modal>
       <CopyToClipboard
-        text={[title, guessesString, "https://oec.world/en/games/tradle"].join(
-          "\n"
-        )}
+        text={[title, guessesString, SITE_URL].join("\n")}
         onCopy={() => toast(t("copy"))}
         options={{
           format: "text/plain",
