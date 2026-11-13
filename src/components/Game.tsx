@@ -260,10 +260,7 @@ export function Game({ settingsData, updateSettings }: GameProps) {
           </button>
         </div>
       ) : (
-        <div
-          className="w-full animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800/70"
-          style={{ height: "clamp(16rem, 52vh, 24rem)" }}
-        />
+        <div className="treemap-height w-full animate-pulse rounded-lg bg-slate-200/70 dark:bg-slate-800/70" />
       )}
       {rotationMode && !hideImageMode && !gameEnded && (
         <button

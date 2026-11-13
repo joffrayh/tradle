@@ -638,8 +638,7 @@ export function Treemap({ code, oecId }: TreemapProps) {
       </p>
       <div
         ref={ref}
-        className="relative w-full overflow-hidden rounded-lg bg-slate-200/70 dark:bg-slate-800/70"
-        style={{ height: "clamp(16rem, 52vh, 24rem)" }}
+        className="treemap-height relative w-full overflow-hidden rounded-lg bg-slate-200/70 dark:bg-slate-800/70"
       >
         {error ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-4 text-center">

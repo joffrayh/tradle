@@ -70,3 +70,14 @@ input,
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/*
+ * Treemap height. svh ("small viewport height") stays the same whether the
+ * mobile browser's toolbars are showing or hidden; plain vh changes as they
+ * slide in and out, which resized the treemap and reshuffled its tiles.
+ * The vh line is a fallback for browsers without svh.
+ */
+.treemap-height {
+  height: clamp(16rem, 52vh, 24rem);
+  height: clamp(16rem, 52svh, 24rem);
+}
