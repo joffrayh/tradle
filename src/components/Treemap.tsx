@@ -337,6 +337,9 @@ interface TileLayerProps {
   className?: string;
 }
 
+const TILE_PADDING = 4;
+const LINE_HEIGHT = 1.25; // Tailwind's leading-tight
+
 // One full set of tiles. Memoised because a country has ~1,000 products and
 // re-rendering them all on every state change would make the page stutter.
 const TileLayer = React.memo(function TileLayer({
@@ -353,6 +356,12 @@ const TileLayer = React.memo(function TileLayer({
         const fontSize = Math.max(9, Math.min(28, Math.sqrt(w * h) / 7));
         const showName = w >= 44 && h >= fontSize * 2.4;
         const showShare = w >= 30 && h >= fontSize * 1.3;
+        const labelled = showName || showShare;
+        // Clip the label to the lines that fit completely, so a line is
+        // hidden rather than sliced through at the bottom of the tile.
+        const lineHeight = fontSize * LINE_HEIGHT;
+        const labelHeight =
+          Math.floor((h - TILE_PADDING * 2) / lineHeight) * lineHeight;
         const isSelected = leaf.id === selected;
         return (
           <div
@@ -361,7 +370,7 @@ const TileLayer = React.memo(function TileLayer({
             tabIndex={-1}
             title={`${leaf.name} — ${share(leaf.value)}`}
             onClick={() => onSelect(isSelected ? null : leaf.id)}
-            className="absolute cursor-pointer overflow-hidden p-1 leading-tight"
+            className="absolute cursor-pointer overflow-hidden leading-tight"
             style={{
               left: x,
               top: y,
@@ -369,16 +378,28 @@ const TileLayer = React.memo(function TileLayer({
               height: h,
               backgroundColor: bg,
               color: textColor(bg),
+              // Only labelled tiles get padding: padding can't shrink, so on
+              // a tiny tile it would paint over its neighbours.
+              padding: labelled ? TILE_PADDING : 0,
               fontSize,
               outline: isSelected ? "3px solid #0f172a" : undefined,
               outlineOffset: -3,
               zIndex: isSelected ? 1 : undefined,
             }}
           >
-            {showName && (
-              <div className="break-words font-semibold">{leaf.name}</div>
+            {labelled && (
+              <div
+                className="overflow-hidden"
+                style={{ maxHeight: labelHeight }}
+              >
+                {showName && (
+                  <div className="break-words font-semibold">{leaf.name}</div>
+                )}
+                {showShare && (
+                  <div className="opacity-90">{share(leaf.value)}</div>
+                )}
+              </div>
             )}
-            {showShare && <div className="opacity-90">{share(leaf.value)}</div>}
           </div>
         );
       })}
@@ -539,21 +560,26 @@ export function Treemap({ code, oecId }: TreemapProps) {
       .size([width, height])
       .paddingInner(1)
       .round(true)(root);
-    return root.leaves().map((node) => {
-      const n = node as typeof node & {
-        x0: number;
-        y0: number;
-        x1: number;
-        y1: number;
-      };
-      return {
-        leaf: node.data.leaf as Leaf,
-        x: n.x0,
-        y: n.y0,
-        w: n.x1 - n.x0,
-        h: n.y1 - n.y0,
-      };
-    });
+    // Most products are too small to get even a pixel, so drop the tiles
+    // that round to nothing rather than drawing them.
+    return root
+      .leaves()
+      .map((node) => {
+        const n = node as typeof node & {
+          x0: number;
+          y0: number;
+          x1: number;
+          y1: number;
+        };
+        return {
+          leaf: node.data.leaf as Leaf,
+          x: n.x0,
+          y: n.y0,
+          w: n.x1 - n.x0,
+          h: n.y1 - n.y0,
+        };
+      })
+      .filter((tile) => tile.w >= 1 && tile.h >= 1);
   }, [visibleLeaves, width, height]);
 
   const share = useCallback(
