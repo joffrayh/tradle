@@ -37,6 +37,7 @@ module.exports = {
       },
       animation: {
         reveal: "reveal 200ms forwards",
+        "fade-in": "reveal 250ms ease-out both",
         pop: "pop 500ms ease-out forwards",
       },
     },

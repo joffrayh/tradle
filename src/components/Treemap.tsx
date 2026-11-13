@@ -3,6 +3,7 @@ import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -320,6 +321,127 @@ function useElementSize<T extends HTMLElement>() {
   return [ref, size] as const;
 }
 
+interface Tile {
+  leaf: Leaf;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+interface TileLayerProps {
+  tiles: Tile[];
+  selected: number | null;
+  onSelect: (id: number | null) => void;
+  share: (value: number) => string;
+  className?: string;
+}
+
+// One full set of tiles. Memoised because a country has ~1,000 products and
+// re-rendering them all on every state change would make the page stutter.
+const TileLayer = React.memo(function TileLayer({
+  tiles,
+  selected,
+  onSelect,
+  share,
+  className = "",
+}: TileLayerProps) {
+  return (
+    <div className={`absolute inset-0 ${className}`}>
+      {tiles.map(({ leaf, x, y, w, h }) => {
+        const bg = SECTION_COLORS[leaf.sectionId] ?? "#94a3b8";
+        const fontSize = Math.max(9, Math.min(28, Math.sqrt(w * h) / 7));
+        const showName = w >= 44 && h >= fontSize * 2.4;
+        const showShare = w >= 30 && h >= fontSize * 1.3;
+        const isSelected = leaf.id === selected;
+        return (
+          <div
+            key={leaf.id}
+            role="button"
+            tabIndex={-1}
+            title={`${leaf.name} — ${share(leaf.value)}`}
+            onClick={() => onSelect(isSelected ? null : leaf.id)}
+            className="absolute cursor-pointer overflow-hidden p-1 leading-tight"
+            style={{
+              left: x,
+              top: y,
+              width: w,
+              height: h,
+              backgroundColor: bg,
+              color: textColor(bg),
+              fontSize,
+              outline: isSelected ? "3px solid #0f172a" : undefined,
+              outlineOffset: -3,
+              zIndex: isSelected ? 1 : undefined,
+            }}
+          >
+            {showName && (
+              <div className="break-words font-semibold">{leaf.name}</div>
+            )}
+            {showShare && <div className="opacity-90">{share(leaf.value)}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+});
+
+interface SectionButtonProps {
+  id: number;
+  name: string;
+  title: string;
+  active: boolean;
+  dimmed: boolean;
+  onClick: () => void;
+}
+
+// An icon that widens to show the section name while selected. The label's
+// width is measured so it animates to exactly its size, which keeps the
+// opening and closing speeds even.
+function SectionButton({
+  id,
+  name,
+  title,
+  active,
+  dimmed,
+  onClick,
+}: SectionButtonProps) {
+  const color = SECTION_COLORS[id] ?? "#94a3b8";
+  const textRef = useRef<HTMLSpanElement>(null);
+  const [labelWidth, setLabelWidth] = useState(0);
+  useLayoutEffect(() => {
+    setLabelWidth(textRef.current?.offsetWidth ?? 0);
+  }, [name]);
+  return (
+    <button
+      type="button"
+      data-section={id}
+      aria-pressed={active}
+      aria-label={name}
+      title={title}
+      onClick={onClick}
+      className={`inline-flex h-7 shrink-0 items-center rounded-full px-1.5 text-xs font-semibold transition-opacity duration-300 ${
+        dimmed ? "opacity-40" : ""
+      }`}
+      style={{ backgroundColor: color, color: textColor(color) }}
+    >
+      <SectionIcon id={id} />
+      <span
+        aria-hidden="true"
+        className="block overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-300 ease-in-out"
+        style={{
+          maxWidth: active ? labelWidth : 0,
+          opacity: active ? 1 : 0,
+        }}
+      >
+        <span ref={textRef} className="inline-block px-1">
+          {name}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 interface TreemapProps {
   /** Lowercase ISO2 code, e.g. "ng" */
   code: string;
@@ -333,7 +455,15 @@ export function Treemap({ code, oecId }: TreemapProps) {
   const [attempt, setAttempt] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [section, setSection] = useState<number | null>(null);
+  // While switching sections the previous tiles stay underneath for a moment
+  // and the new ones fade in over them, instead of swapping instantly.
+  const [layerKey, setLayerKey] = useState(0);
+  const [outgoing, setOutgoing] = useState<{
+    key: number;
+    tiles: Tile[];
+  } | null>(null);
   const [ref, { width, height }] = useElementSize<HTMLDivElement>();
+  const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -341,6 +471,7 @@ export function Treemap({ code, oecId }: TreemapProps) {
     setError(false);
     setSelected(null);
     setSection(null);
+    setOutgoing(null);
     fetchExports(code, oecId)
       .then((data) => {
         if (cancelled) return;
@@ -386,7 +517,7 @@ export function Treemap({ code, oecId }: TreemapProps) {
     [leaves, section]
   );
 
-  const tiles = useMemo(() => {
+  const tiles = useMemo((): Tile[] => {
     if (!visibleLeaves || width === 0 || height === 0) return [];
     const sections = new Map<number, Leaf[]>();
     for (const leaf of visibleLeaves) {
@@ -431,10 +562,42 @@ export function Treemap({ code, oecId }: TreemapProps) {
   );
   const selectedLeaf = visibleLeaves?.find((leaf) => leaf.id === selected);
 
-  const toggleSection = (id: number | null) => {
-    setSection((current) => (current === id ? null : id));
+  const toggleSection = (id: number) => {
+    setOutgoing({ key: layerKey, tiles });
+    setLayerKey((key) => key + 1);
+    setSection(section === id ? null : id);
     setSelected(null);
   };
+
+  useEffect(() => {
+    if (!outgoing) return;
+    const timeout = setTimeout(() => setOutgoing(null), 300);
+    return () => clearTimeout(timeout);
+  }, [outgoing]);
+
+  // Keep the selected button in view as it widens: each frame, ease the row's
+  // scroll position towards showing the whole button.
+  useEffect(() => {
+    const row = rowRef.current;
+    const button = row?.querySelector<HTMLElement>(
+      `[data-section="${section}"]`
+    );
+    if (!row || !button) return;
+    const until = performance.now() + 600;
+    let frame = 0;
+    const step = (now: number) => {
+      const r = row.getBoundingClientRect();
+      const b = button.getBoundingClientRect();
+      const margin = 12;
+      let delta = 0;
+      if (b.right > r.right - margin) delta = b.right - (r.right - margin);
+      else if (b.left < r.left + margin) delta = b.left - (r.left + margin);
+      if (Math.abs(delta) > 0.5) row.scrollLeft += delta * 0.25;
+      if (now < until) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [section]);
 
   return (
     <div>
@@ -466,42 +629,26 @@ export function Treemap({ code, oecId }: TreemapProps) {
         ) : !leaves ? (
           <div className="h-full w-full animate-pulse" aria-label="Loading" />
         ) : (
-          tiles.map(({ leaf, x, y, w, h }) => {
-            const bg = SECTION_COLORS[leaf.sectionId] ?? "#94a3b8";
-            const fontSize = Math.max(9, Math.min(28, Math.sqrt(w * h) / 7));
-            const showName = w >= 44 && h >= fontSize * 2.4;
-            const showShare = w >= 30 && h >= fontSize * 1.3;
-            const isSelected = leaf.id === selected;
-            return (
-              <div
-                key={leaf.id}
-                role="button"
-                tabIndex={-1}
-                title={`${leaf.name} — ${share(leaf.value)}`}
-                onClick={() => setSelected(isSelected ? null : leaf.id)}
-                className="absolute cursor-pointer overflow-hidden p-1 leading-tight"
-                style={{
-                  left: x,
-                  top: y,
-                  width: w,
-                  height: h,
-                  backgroundColor: bg,
-                  color: textColor(bg),
-                  fontSize,
-                  outline: isSelected ? "3px solid #0f172a" : undefined,
-                  outlineOffset: -3,
-                  zIndex: isSelected ? 1 : undefined,
-                }}
-              >
-                {showName && (
-                  <div className="break-words font-semibold">{leaf.name}</div>
-                )}
-                {showShare && (
-                  <div className="opacity-90">{share(leaf.value)}</div>
-                )}
-              </div>
-            );
-          })
+          <>
+            {outgoing && (
+              <TileLayer
+                key={outgoing.key}
+                tiles={outgoing.tiles}
+                selected={null}
+                onSelect={setSelected}
+                share={share}
+                className="pointer-events-none"
+              />
+            )}
+            <TileLayer
+              key={layerKey}
+              tiles={tiles}
+              selected={selected}
+              onSelect={setSelected}
+              share={share}
+              className={outgoing ? "motion-safe:animate-fade-in" : ""}
+            />
+          </>
         )}
       </div>
       <p className="mt-1 min-h-[1.5rem] text-center text-sm text-slate-700 dark:text-slate-300">
@@ -515,49 +662,24 @@ export function Treemap({ code, oecId }: TreemapProps) {
       </p>
       {sections.length > 1 && (
         <div
-          className="mb-2 flex flex-wrap items-center justify-center gap-1"
+          ref={rowRef}
+          className="no-scrollbar -mx-2 mb-2 overflow-x-auto px-2"
           role="group"
           aria-label="Filter by product type"
         >
-          <button
-            type="button"
-            aria-pressed={section == null}
-            onClick={() => toggleSection(null)}
-            className={`h-7 rounded-full border px-2.5 text-xs font-semibold transition-colors ${
-              section == null
-                ? "border-slate-800 bg-slate-800 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-slate-900"
-                : "border-slate-300 bg-white/70 text-slate-700 dark:border-slate-600 dark:bg-slate-900/70 dark:text-slate-200"
-            }`}
-          >
-            All
-          </button>
-          {sections.map((item) => {
-            const color = SECTION_COLORS[item.id] ?? "#94a3b8";
-            const active = item.id === section;
-            return (
-              <button
+          <div className="mx-auto flex w-max items-center gap-1">
+            {sections.map((item) => (
+              <SectionButton
                 key={item.id}
-                type="button"
-                aria-pressed={active}
-                aria-label={item.name}
+                id={item.id}
+                name={item.name}
                 title={`${item.name} — ${share(item.value)}`}
+                active={item.id === section}
+                dimmed={section != null && item.id !== section}
                 onClick={() => toggleSection(item.id)}
-                className={`inline-flex h-7 min-w-[1.75rem] items-center justify-center whitespace-nowrap rounded-full text-xs font-semibold transition-all duration-200 ${
-                  active ? "px-2.5" : ""
-                } ${section != null && !active ? "opacity-40" : ""}`}
-                style={{ backgroundColor: color, color: textColor(color) }}
-              >
-                <SectionIcon id={item.id} />
-                <span
-                  className={`overflow-hidden transition-all duration-200 ${
-                    active ? "ml-1 max-w-[14rem]" : "max-w-0"
-                  }`}
-                >
-                  {item.name}
-                </span>
-              </button>
-            );
-          })}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
